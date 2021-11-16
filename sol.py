@@ -7,6 +7,7 @@ Created on Thu Nov 11 11:38:02 2021
 """
 
 import utils.squilibs as c4
+from utils.squilibs import montecarlo
 import utils.tree as t
 import random
 import numpy as np
@@ -75,15 +76,39 @@ def _minmax(board, player, level):
     return val
 
 
+def montecarlo_game(board, player):
+
+    prob = 0
+
+    while not c4.four_in_a_row(board, player):
+        best_move = -1
+        for move in c4.valid_moves(board):
+            board_copy = board.copy()
+            c4.play(board_copy, move, player)
+            new_prob = player*montecarlo(board_copy, player)
+            if new_prob > prob:
+                best_move = move
+                prob = new_prob
+        c4.play(board, best_move, player)
+        print(board)
+        moves = c4.valid_moves(board)
+        if len(moves) == 0:
+            break
+        cont_move = np.random.choice(moves, 1)[0]
+        c4.play(board, cont_move, -player)
+
+
 board = np.zeros((c4.NUM_COLUMNS, c4.COLUMN_HEIGHT), dtype=np.byte)
 
 c4.play(board, 3, 1)
 c4.play(board, 0, -1)
 c4.play(board, 4, 1)
 c4.play(board, 0, -1)
-c4.play(board, 5, 1)
+# c4.play(board, 5, 1)
 
-print(_minmax(board, PLAYER_1, 0))
+montecarlo_game(board, PLAYER_1)
+
+# print(_minmax(board, PLAYER_1, 0))
 
 # root = t.Node(board, 0)
 

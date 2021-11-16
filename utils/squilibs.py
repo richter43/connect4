@@ -7,6 +7,7 @@ Free for personal or classroom use; see 'LICENCE.md' for details.
 """
 
 import numpy as np
+from collections import Counter
 
 NUM_COLUMNS = 7
 COLUMN_HEIGHT = 6
@@ -63,3 +64,33 @@ def four_in_a_row(board, player):
             )
         )
     )
+
+
+def _mc(board, player):
+    p = -player
+    while valid_moves(board):
+        p = -p
+        c = np.random.choice(valid_moves(board))
+        play(board, c, p)
+        if four_in_a_row(board, p):
+            return p
+    return 0
+
+
+def montecarlo(board, player):
+    montecarlo_samples = 100
+    cnt = Counter(_mc(np.copy(board), player)
+                  for _ in range(montecarlo_samples))
+    return (cnt[1] - cnt[-1]) / montecarlo_samples
+
+
+# def eval_board(board, player):
+#     if four_in_a_row(board, 1):
+#         # Alice won
+#         return 1
+#     elif four_in_a_row(board, -1):
+#         # Bob won
+#         return -1
+#     else:
+#         # Not terminal, let's simulate...
+#         return montecarlo(board, player)
