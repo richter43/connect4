@@ -7,6 +7,7 @@ Created on Thu Nov 11 11:38:02 2021
 """
 
 import utils.squilibs as c4
+import utils.algos as algos
 from utils.squilibs import montecarlo
 import utils.tree as t
 import random
@@ -14,9 +15,7 @@ import numpy as np
 
 PLAYER_1 = 1
 PLAYER_2 = -1
-
-BRANCHING_FACTOR = 2
-MAX_DEPTH = 15
+MAX_DEPTH = 5
 
 
 def dummy_plays(board, turns):
@@ -33,47 +32,13 @@ def place_randomly(board, player):
 
 def mcst(root, player):
     best_node = None
-    for _ in range(100):
-        best_node = t.select_best(root)
-        t.expand(best_node, player)
-        won = t.simulate(best_node, player)
-        best_node.rewards += won
-        player = -player
 
-    print(best_node.state)
+    best_node = t.select_best(root)
+    sim_node = t.expand(best_node, player)
+    t.simulate(sim_node, player)
+    t.backprop(sim_node)
 
-    ptr = best_node.parent
-
-    while ptr.player != 0:
-        print(best_node.state)
-
-
-def _minmax(board, player, level):
-
-    if level == MAX_DEPTH or not c4.valid_moves(board):
-        return 0
-
-    if c4.four_in_a_row(board, 1):
-        return 1
-    elif c4.four_in_a_row(board, -1):
-        return -1
-
-    board_moves = np.array(c4.valid_moves(board))
-
-    val = -2**32 if player == PLAYER_1 else 2**32
-
-    for i in range(BRANCHING_FACTOR):
-
-        board_copy = board.copy()
-        if len(board_moves) == 0:
-            break
-        move = np.random.choice(board_moves, 1)[0]
-        board_moves = board_moves[board_moves != move]
-        c4.play(board_copy, move, player)
-        sol = _minmax(board_copy, -player, level + 1)
-        val = max(val, sol) if player == PLAYER_1 else min(val, sol)
-
-    return val
+    mcst(root, -player)
 
 
 def montecarlo_game(board, player):
@@ -82,6 +47,7 @@ def montecarlo_game(board, player):
 
     while not c4.four_in_a_row(board, player):
         best_move = -1
+
         for move in c4.valid_moves(board):
             board_copy = board.copy()
             c4.play(board_copy, move, player)
@@ -100,13 +66,16 @@ def montecarlo_game(board, player):
 
 board = np.zeros((c4.NUM_COLUMNS, c4.COLUMN_HEIGHT), dtype=np.byte)
 
-c4.play(board, 3, 1)
-c4.play(board, 0, -1)
-c4.play(board, 4, 1)
-c4.play(board, 0, -1)
-# c4.play(board, 5, 1)
+p = algos.PLAYER_1
 
-montecarlo_game(board, PLAYER_1)
+while len(c4.valid_moves(board)) != 0 and not c4.four_in_a_row(board, 1) and not c4.four_in_a_row(board, -1):
+    ans = algos.minimax_montecarloeval(board, p, 1, (0, -1000), (0, 1000))
+    c4.play(board, ans[0], p)
+    p = -p
+    print(board)
+
+
+# montecarlo_game(board, PLAYER_1)
 
 # print(_minmax(board, PLAYER_1, 0))
 
