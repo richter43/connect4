@@ -10,61 +10,89 @@ import unittest
 import utils.tree as tree
 import numpy as np
 import utils.squilibs as c4
+import utils.algos as algos
 
 PLAYER = -1
 
 
-# class TestTreeMethods(unittest.TestCase):
+class testMCST(unittest.TestCase):
 
-#     def setUp(self):
-#         board = np.zeros(
-#             (c4.NUM_COLUMNS, c4.COLUMN_HEIGHT), dtype=np.byte)
-#         self.root = tree.Node(board, PLAYER)
-
-#     def test_mcst_root(self):
-#         sel = tree.select_best(self.root)
-#         self.assertTrue(sel == self.root)
-#         sel = tree.expand(self.root)
-#         tree.simulate(sel)
-#         tree.backprop(sel)
-#         self.assertTrue(self.root.visits == 1)
-#         sel = tree.select_best(self.root)
-
-
-class TestMCST(unittest.TestCase):
     def setUp(self):
-        self.root = wikiExample()
+        self.je = johnLevineExample()
+        self.je.branches[0].score = 20
+        self.je.branches[0].visits = 1
+        tree.backprop(self.je.branches[0])
+        self.je.branches[1].score = 10
+        self.je.branches[1].visits = 1
+        tree.backprop(self.je.branches[1])
+        self.assertEqual(self.je.score, 30)
+        self.assertEqual(self.je.visits, 2)
 
-    def test_mcst_root(self):
-        sel = tree.select_best(self.root)
-        tree.backprop(sel)
-        self.assertTrue(self.root.visits == 1)
-        sel = tree.select_best(self.root)
+    def test_rootisleaf(self):
+        root = createNode(0, 0, None, True)
+        selected_node = tree.select_best(root)
+        self.assertEqual(root, selected_node)
+
+    def test_leavesempty(self):
+        root = johnLevineExample()
+        root.branches[0].score = 20
+        root.branches[0].visits = 1
+        tree.backprop(root.branches[0])
+        self.assertEqual(root.visits, 1)
+        self.assertEqual(root.score, 20)
+
+    def test_selectiononeempty(self):
+        root = johnLevineExample()
+        root.branches[0].score = 20
+        root.branches[0].visits = 1
+        selected_node = tree.select_best(root)
+        self.assertEqual(selected_node, root.branches[1])
+
+    def test_select_ucb(self):
+
+        selected_node = tree.select_best(self.je, 2)
+        self.assertEqual(selected_node, self.je.branches[0])
 
 
-# class TestTreeBackprops(unittest.TestCase):
+class testMCST_c4(unittest.TestCase):
 
-#     def setUp(self):
-#         self.root = tree.Node(None, PLAYER)
-#         self.root.add_branch(None)
+    def setUp(self):
+        self.board = np.zeros(
+            (c4.NUM_COLUMNS, c4.COLUMN_HEIGHT), dtype=np.byte)
+
+    def test_expandsimulate(self):
+        root = tree.Node(self.board, -1)
+        sel_node = tree.select_best(root)
+        self.assertEqual(sel_node, root)
+        select_sim = tree.expand(sel_node)
+        self.assertEqual(len(root.branches), 7)
+        tree.simulate(select_sim)
+        tree.backprop(select_sim)
+        self.assertEqual(select_sim.visits, 1)
+        tree.select_best(root)
+
+    def test_squil(self):
+        board = self.board.copy()
+        c4.play(board, 3, 1)
+        c4.play(board, 0, -1)
+        c4.play(board, 4, 1)
+        c4.play(board, 0, -1)
+        c4.play(board, 5, 1)
+        c4.play(board, 0, -1)
+
+        root = tree.Node(board, -1)
+        idx = algos.mcst(root, algos.PLAYER_2, 15)
+
+        self.assertEqual(idx, 2)
 
 
-def wikiExample():
+def johnLevineExample():
+    root = createNode(0, 0, None)
+    first_leaf = createNode(0, 0, root, True)
+    second_leaf = createNode(0, 0, root, True)
 
-    root = createNode(11, 21, None)
-    firstCol = createNode(7, 10, root)
-    tmpNode = createNode(1, 6, firstCol)
+    root.branches = [first_leaf, second_leaf]
 
-    tmpNode.branches = [createNode(
-        2, 3, tmpNode, True), createNode(3, 3, tmpNode, True)]
-
-    firstCol.branches = [createNode(2, 4, firstCol, True), tmpNode]
-
-    thirdCol = createNode(3, 8, root)
-    thirdCol.branches = [createNode(1, 2, thirdCol, True), createNode(
-        2, 3, thirdCol, True), createNode(2, 3, thirdCol, True)]
-
-    root.branches = [firstCol, createNode(0, 3, root, True), thirdCol]
     return root
 
 
@@ -77,9 +105,5 @@ def createNode(score, visits, parent, leaf=False):
     return node
 
 
-# class TestTreeSelection(unittest.TestCase):
-#     def setUp(self):
-#         board = np.zeros(
-#             (c4.NUM_COLUMNS, c4.COLUMN_HEIGHT), dtype=np.byte)
 if __name__ == '__main__':
     unittest.main()

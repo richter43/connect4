@@ -82,15 +82,3 @@ def montecarlo(board, player):
     cnt = Counter(_mc(np.copy(board), player)
                   for _ in range(montecarlo_samples))
     return (cnt[1] - cnt[-1]) / montecarlo_samples
-
-
-# def eval_board(board, player):
-#     if four_in_a_row(board, 1):
-#         # Alice won
-#         return 1
-#     elif four_in_a_row(board, -1):
-#         # Bob won
-#         return -1
-#     else:
-#         # Not terminal, let's simulate...
-#         return montecarlo(board, player)

@@ -8,11 +8,15 @@ Created on Fri Nov 19 09:27:29 2021
 
 import utils.squilibs as c4
 import numpy as np
+import utils.tree as t
+from collections import Counter
+import time
 
 BRANCHING_FACTOR = 7
 PLAYER_1 = 1
 PLAYER_2 = -1
 MAX_DEPTH = 5
+MAX_SCORE = 1000
 
 
 def minmax(board, player, level):
@@ -130,3 +134,52 @@ def minimax_montecarloeval(board, player, level, alpha, beta):
             return beta
 
     return alpha
+
+
+def max_montecarloeval(board, player):
+
+    prob = 0
+    while not c4.four_in_a_row(board, player):
+        best_move = -1
+
+        for move in c4.valid_moves(board):
+            board_copy = board.copy()
+            c4.play(board_copy, move, player)
+            new_prob = player*c4.montecarlo(board_copy, player)
+            if new_prob > prob:
+                best_move = move
+                prob = new_prob
+        c4.play(board, best_move, player)
+        print(board)
+        moves = c4.valid_moves(board)
+        if len(moves) == 0:
+            break
+        cont_move = np.random.choice(moves, 1)[0]
+        c4.play(board, cont_move, -player)
+
+
+def place_randomly(board, player):
+    play = np.random.choice(c4.valid_moves(board), 1)[0]
+    c4.play(board, play, player)
+
+
+def mcst(root, player, max_time):
+
+    start_time = time.time()
+
+    while time.time() - start_time < max_time:
+        best_node = t.select_best(root)
+        sim_node = t.expand(best_node)
+        t.simulate(sim_node)
+        t.backprop(sim_node)
+
+    score_array = [
+        b.score/b.visits if not b.terminal else MAX_SCORE for b in root.branches]
+    return np.argmax(score_array)
+
+
+def sim(board, player):
+    montecarlo_samples = 100
+    cnt = Counter(c4._mc(np.copy(board), player)
+                  for _ in range(montecarlo_samples))
+    return cnt[player]
