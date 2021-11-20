@@ -9,6 +9,7 @@ Created on Fri Nov 19 09:27:29 2021
 import utils.squilibs as c4
 import numpy as np
 import utils.tree as t
+import utils.mcts as mcts_lib
 from collections import Counter
 import time
 
@@ -33,8 +34,8 @@ def minmax(board, player, level):
 
     Returns
     -------
-    TYPE
-        DESCRIPTION.
+    Integer
+        Score.
 
     '''
 
@@ -64,7 +65,7 @@ def minimax_alphabeta(board, player, level, alpha, beta):
     Parameters
     ----------
     board : Numpy array
-        DESCRIPTION.
+        Contains a connect4 state.
     player : Integer
         Values are either 1 or -1, the player is the one currently playing.
     level : Integer
@@ -72,8 +73,8 @@ def minimax_alphabeta(board, player, level, alpha, beta):
 
     Returns
     -------
-    TYPE
-        DESCRIPTION.
+    Tuple (move, score)
+        Summary of computation.
 
     '''
 
@@ -103,7 +104,7 @@ def minimax_montecarloeval(board, player, level, alpha, beta):
     Parameters
     ----------
     board : Numpy array
-        DESCRIPTION.
+        Contains a connect4 state.
     player : Integer
         Values are either 1 or -1, the player is the one currently playing.
     level : Integer
@@ -111,13 +112,14 @@ def minimax_montecarloeval(board, player, level, alpha, beta):
 
     Returns
     -------
-    TYPE
-        DESCRIPTION.
+    Tuple (move, score)
+        Summary of computation.
 
     '''
 
     if c4.four_in_a_row(board, 1) or c4.four_in_a_row(board, -1):
-        return (None, player*(level+1))
+        # return (None, player*(level+1))
+        return (None, player)
     elif not c4.valid_moves(board):
         return (None, 0)
     elif level == 0:
@@ -137,6 +139,22 @@ def minimax_montecarloeval(board, player, level, alpha, beta):
 
 
 def max_montecarloeval(board, player):
+    '''
+
+    Algorithm that maximizes the Monte Carlo evaluation to find the best move
+
+    Parameters
+    ----------
+    board : Numpy array
+        Contains a connect4 state.
+    player : Integer
+        Values are either 1 or -1, the player is the one currently playing.
+
+    Returns
+    -------
+    None.
+
+    '''
 
     prob = 0
     while not c4.four_in_a_row(board, player):
@@ -159,19 +177,92 @@ def max_montecarloeval(board, player):
 
 
 def place_randomly(board, player):
+    '''
+    Places a piece of the given player in the board
+
+    Parameters
+    ----------
+    board : Numpy array
+        Contains a connect4 state.
+    player : Integer
+        Values are either 1 or -1, the player is the one currently playing.
+
+    Returns
+    -------
+    None.
+
+    '''
     play = np.random.choice(c4.valid_moves(board), 1)[0]
     c4.play(board, play, player)
 
 
-def mcst(root, player, max_time):
+def mcts(root, player, max_time):
+    '''
+    Implementation of the Montecarlo Tree Search that uses time for restricting 
+    the computation cycles
+
+    Parameters
+    ----------
+    root : Tree node
+        Node that represents the root.
+    player : Integer
+        Values are either 1 or -1, the player is the one currently playing.
+    max_time : Integer
+        Time in seconds.
+
+    Returns
+    -------
+    Integer
+        Best move returned as the column number.
+
+    '''
 
     start_time = time.time()
 
     while time.time() - start_time < max_time:
-        best_node = t.select_best(root)
-        sim_node = t.expand(best_node)
-        t.simulate(sim_node)
-        t.backprop(sim_node)
+        best_node = mcts_lib.select_best(root)
+        sim_node = mcts_lib.expand(best_node)
+        mcts_lib.simulate(sim_node)
+        mcts_lib.backprop(sim_node)
+
+    score_array = [
+        b.score/b.visits if not b.terminal else MAX_SCORE for b in root.branches]
+    return np.argmax(score_array)
+
+
+def mcts_ms(root, player, max_time):
+    '''
+    Implementation of the Montecarlo Tree Search - Modified Selection 
+    that uses time for restricting the computation cycles
+
+    This modified version does a simulation using minimax_alphabeta_montecarloeval
+    in the selection step, if the simulation checks out it doesn't expand any further
+
+    Parameters
+    ----------
+    root : Tree node
+        Node that represents the root.
+    player : Integer
+        Values are either 1 or -1, the player is the one currently playing.
+    max_time : Integer
+        Time in seconds.
+
+    Returns
+    -------
+    Integer
+        Best move returned as the column number    
+
+    '''
+
+    start_time = time.time()
+
+    while time.time() - start_time < max_time:
+        best_node = mcts_lib.select_best_ms_alphabeta(root)
+        if best_node is None:
+            continue
+        sim_node = mcts_lib.expand(best_node)
+        mcts_lib.simulate(sim_node)
+        mcts_lib.backprop(sim_node)
 
     score_array = [
         b.score/b.visits if not b.terminal else MAX_SCORE for b in root.branches]
@@ -179,7 +270,25 @@ def mcst(root, player, max_time):
 
 
 def sim(board, player):
-    montecarlo_samples = 100
+    '''
+    Iterator that plays sim_amount random games and returns the amount of games
+    won by player
+
+    Parameters
+    ----------
+    board : Numpy array
+        Contains a connect4 state.
+    player : Integer
+        Values are either 1 or -1, the player is the one currently playing.
+
+    Returns
+    -------
+    Integer
+        Amount of wins in the simulation, maximum number is montecarlo_samples.
+
+    '''
+
+    sim_amount = 100
     cnt = Counter(c4._mc(np.copy(board), player)
-                  for _ in range(montecarlo_samples))
+                  for _ in range(sim_amount))
     return cnt[player]

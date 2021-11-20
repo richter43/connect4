@@ -13,12 +13,12 @@ import numpy as np
 
 board = np.zeros((c4.NUM_COLUMNS, c4.COLUMN_HEIGHT), dtype=np.byte)
 
+MAX_TIME = 5
 p = algos.PLAYER_2
 
-
-MAX_TIME = 5
-root = tree.Node(board, p)
-idx = algos.mcst(root, p, MAX_TIME)
-
-score_array = [b.score/b.visits for b in root.branches]
-idx = np.argmax(score_array)
+for i in range(10):
+    root = tree.Node(board, -p)  # Root should contain player who last played
+    idx = algos.mcts(root, p, MAX_TIME)
+    c4.play(board, idx, p)
+    print(board)
+    p = -p
